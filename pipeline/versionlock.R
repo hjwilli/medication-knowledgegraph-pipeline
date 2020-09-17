@@ -21,8 +21,9 @@ if (action.request[[1]] == "create") {
       tm <- as.POSIXlt(Sys.time(), "UTC", "%Y-%m-%dT%H:%M:%S")
       tm <- strftime(tm , "%Y-%m-%d")
       # cat(paste0('Using "', tm, '" as the datestamp\n\n'))
-      payload <-
-        toJSON(list(semantic = action.request[[2]], datestamp = tm))
+      # payload <-
+      #   toJSON(list(semantic = action.request[[2]], datestamp = tm))
+      payload <- list(semantic = action.request[[2]], datestamp = tm)
       cat(paste0("Writing\n", payload, "\nto ", vl.fn, "\n\n"))
       write_json(x = payload, path = vl.fn)
       # print(write.success)
@@ -32,6 +33,7 @@ if (action.request[[1]] == "create") {
     cat("create requires a second argument, the semantic version, like 1.0.7\n\n")
   }
 } else if (action.request[[1]] == "overwrite") {
+  # in progress
   print("I will overwrite the version lock")
 } else if (action.request[[1]] == "release") {
   cat("Attempting to release the version lock by renaming the file.\n\n")

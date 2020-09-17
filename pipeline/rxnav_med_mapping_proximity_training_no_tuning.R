@@ -21,6 +21,10 @@ print(getOption("java.parameters"))
 
 ####
 
+version.list <- jsonlite::read_json("build/versionlock.json", simplifyVector = TRUE)
+
+####
+
 tryCatch({
   dbDisconnect(rxnCon)
 },
@@ -491,7 +495,7 @@ coverage <- length(covered.rxcuis) / length(attempted.rxcuis)
 print(coverage)
 
 # 24 MB... on the large size for github
-save(rf_classifier, file = config$rf.model.savepath)
+save(rf_classifier, version.list, file = config$rf.model.savepath)
 
 save.image(config$rxnav_med_mapping_training_image)
 

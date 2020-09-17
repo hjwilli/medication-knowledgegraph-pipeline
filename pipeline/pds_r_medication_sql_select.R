@@ -21,6 +21,10 @@ print(getOption("java.parameters"))
 
 ####
 
+version.list <- jsonlite::read_json("build/versionlock.json", simplifyVector = TRUE)
+
+####
+
 # VPN and tunnel may be required
 # set that up outside of this script
 pdsDriver <-
