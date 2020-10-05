@@ -97,7 +97,7 @@ bp.mappings.pair.to.minimal.df <- function(from.ont, to.ont) {
       
       inner.res <- do.call(rbind.data.frame, inner.res)
       inner.res <-
-        inner.res[as.character(inner.res$source.term) != as.character(inner.res$mapped.term),]
+        inner.res[as.character(inner.res$source.term) != as.character(inner.res$mapped.term), ]
       inner.res <-
         unique(inner.res[, c("source.term", "source.ontology", "mapped.term")])
       
@@ -202,8 +202,10 @@ placeholder <-
       rdf_add(
         rdf = direct.rdf,
         subject = current.row[['source_term']],
-        predicate = paste0('http://example.com/resource/',
-                           config$bioportal.mapping.graph.name),
+        predicate = paste0(
+          'http://example.com/resource/',
+          config$bioportal.mapping.graph.name
+        ),
         object = current.row[['mapped_term']]
       )
     }
@@ -218,8 +220,10 @@ tm <- strftime(tm , "%Y-%m-%dT%H:%M:%S%z")
 
 rdf_add(
   rdf = direct.rdf,
-  subject = paste0('http://example.com/resource/',
-                   config$bioportal.mapping.graph.name),
+  subject = paste0(
+    'http://example.com/resource/',
+    config$bioportal.mapping.graph.name
+  ),
   predicate = "http://www.w3.org/2002/07/versionInfo",
   object = tm
 )
@@ -257,38 +261,4 @@ lapply(config$my.source.ontolgies, function(current.source) {
 
 rdf_serialize(rdf = direct.rdf,
               doc = config$bioportal.triples.destination)
-
-####
-
-post.dest <-
-  paste0(
-    config$my.graphdb.base,
-    '/repositories/',
-    config$my.selected.repo,
-    '/rdf-graphs/service?graph=',
-    URLencode(
-      paste0('http://example.com/resource/',
-             config$bioportal.mapping.graph.name),
-      reserved = TRUE
-    )
-  )
-
-print(post.dest)
-
-print(Sys.time())
-
-post.resp <-
-  httr::POST(
-    url = post.dest,
-    body = upload_file(config$bioportal.triples.destination),
-    content_type(config$my.mappings.format),
-    authenticate(
-      config$my.graphdb.username,
-      config$my.graphdb.pw,
-      type = 'basic'
-    )
-  )
-
-print('Errors will be listed below:')
-print(rawToChar(post.resp$content))
 

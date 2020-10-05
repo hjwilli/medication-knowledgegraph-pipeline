@@ -19,11 +19,14 @@ source(
 # Java memory is set in turbo_R_setup.R
 print(getOption("java.parameters"))
 
-####
+# ####
+# 
+# version.list <- jsonlite::read_json("build/versionlock.json", simplifyVector = TRUE)
+# 
+# ####
 
-version.list <- jsonlite::read_json("build/versionlock.json", simplifyVector = TRUE)
+version.list <- list(semantic = config$med.mapping.sw.version, datestamp = execution.timestamp)
 
-####
 
 tryCatch({
   dbDisconnect(rxnCon)

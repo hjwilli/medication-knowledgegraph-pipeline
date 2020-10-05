@@ -4,7 +4,11 @@ robot -vvv template \
 --prefix "obo: http://purl.obolibrary.org/obo/"  \
 --prefix  "mydata: http://example.com/resource/" \
 --template build/reference_medications_for_robot.tsv \
---output build/reference_medications_from_robot.ttl
+--ontology-iri http://example.com/resource/reference_medications \
+annotate \
+--annotation-file build/reference_medications_ontology_annotations.ttl \
+--ontology-iri http://example.com/resource/reference_medications \
+--output build/reference_medications_from_robot.ttl \
 
 
 # source_meds.csv is currently hardcoded in the R classification script
@@ -13,7 +17,11 @@ robot -vvv template \
 --prefix "obo: http://purl.obolibrary.org/obo/"  \
 --prefix  "mydata: http://example.com/resource/" \
 --template build/classified_search_results_for_robot.tsv \
---output build/classified_search_results_from_robot.ttl
+--ontology-iri http://example.com/resource/reference_medications \
+annotate \
+--annotation-file build/classified_search_results_ontology_annotations.ttl \
+--ontology-iri http://example.com/resource/reference_medications \
+--output build/classified_search_results_from_robot.ttl 
 
-zip build/reference_medications_from_robot.ttl.zip build/reference_medications_from_robot.ttl
-zip build/classified_search_results_from_robot.ttl.zip build/classified_search_results_from_robot.ttl
+gzip  -f build/reference_medications_from_robot.ttl
+gzip  -f build/classified_search_results_from_robot.ttl

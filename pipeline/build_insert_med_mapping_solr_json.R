@@ -1,11 +1,50 @@
-library(devtools)
-library(ssh)
+rxcui_ttys.fn <-  'build/rxcui_ttys.ttl'
 
-# requires a properly formatted "turbo_R_setup.yaml" in the home directory of the user who started this script
-# see https://gist.github.com/turbomam/a3915d00ee55d07510493a9944f96696 for template
-devtools::source_gist(id = "https://gist.github.com/turbomam/f082295aafb95e71d109d15ca4535e46",
-                      sha1 = "dbc656aaf63b23dfdd35d875f6772e7c468170a4",
-                      filename = "turbo_R_setup.R")
+# paste0(config$json.source, "/", config$json.for.solr)
+
+
+# set the working directory to medication-knowledgegraph-pipeline/pipeline
+# for example,
+# setwd("~/GitHub/medication-knowledgegraph-pipeline/pipeline")
+
+# get global settings, functions, etc. from https://raw.githubusercontent.com/PennTURBO/turbo-globals
+
+# some people (https://www.r-bloggers.com/reading-an-r-file-from-github/)
+# say it’s necessary to load the devtools package before sourcing from GitHub?
+# but the raw page is just a http-accessible page of text, right?
+
+# requires a properly formatted "turbo_R_setup.yaml" in medication-knowledgegraph-pipeline/config
+# or better yet, a symbolic link to a centrally loated "turbo_R_setup.yaml", which could be used by multiple pipelines
+# see https://github.com/PennTURBO/turbo-globals/blob/master/turbo_R_setup.template.yaml
+
+source(
+  "https://raw.githubusercontent.com/PennTURBO/turbo-globals/master/turbo_R_setup.R"
+)
+
+# Java memory is set in turbo_R_setup.R
+print(getOption("java.parameters"))
+
+####
+
+# we should include the schema.xml in the repo
+
+# Solr prerequisites
+# $ ~/solr-8.4.1/bin/solr start
+# *** [WARN] *** Your open file limit is currently 2560.
+# It should be set to 65000 to avoid operational disruption.
+# If you no longer wish to see this warning, set SOLR_ULIMIT_CHECKS to false in your profile or solr.in.sh
+# *** [WARN] ***  Your Max Processes Limit is currently 5568.
+# It should be set to 65000 to avoid operational disruption.
+# If you no longer wish to see this warning, set SOLR_ULIMIT_CHECKS to false in your profile or solr.in.sh
+# Waiting up to 180 seconds to see Solr running on port 8983 [-]
+# Started Solr server on port 8983 (pid=33449). Happy searching!
+#
+# $ ~/solr-8.4.1/bin/solr create_core -c <config$med.map.kb.solr.host>
+
+# many of the next steps take several minutes each
+
+####    ####    ####    ####
+
 
 # MAIN labels
 # < 1 minute
@@ -18,6 +57,9 @@ main.solr.res <-
 names(main.solr.res) <-
   c("id", "definedin",  "employment", "main.label")
 
+# temp <- table(main.solr.res$id)
+# temp <- cbind.data.frame(names(temp), as.numeric(temp))
+
 # clinrel structctclass labels
 system.time(crsc.solr.res <-
               q2j2df(query = config$clinrel_structclass.solr))
@@ -28,12 +70,14 @@ colnames(crsc.solr.res) <-
   c("main.label", "definedin", "id", "employment")
 
 crsc.solr.res <-
-  crsc.solr.res[crsc.solr.res$id %in% crsc.addtions, ]
+  crsc.solr.res[crsc.solr.res$id %in% crsc.addtions,]
 
 main.solr.res <-
   rbind.data.frame(main.solr.res, crsc.solr.res[, colnames(main.solr.res)])
 
+
 ### DrOn's labels for ChEBI
+
 system.time(
   dron.additional.chebi.labels <-
     q2j2df(query = config$dron.additional.chebi.label.query)
@@ -53,6 +97,9 @@ merged <-
   dplyr::full_join(main.solr.res, dron.additional.chebi.labels)
 
 #### All RxNorm alternative labels
+
+####
+
 # BROKEN as of 2020AA?
 
 system.time(rxn.alt.lab.solr.res <-
@@ -72,6 +119,7 @@ merged <-
   dplyr::full_join(merged, rxn.alt.lab.solr.res)
 
 #### chebi synonyms
+
 system.time(chebi.synonym.res <-
               q2j2df(query = config$chebi.synonym.query))
 
@@ -84,6 +132,16 @@ colnames(chebi.synonym.res) <-
     "synsource",
     "employment" ,
     "l")
+
+# # don't reort a synonm twice just because it's also a clinrel_structclass
+# chebi.synonym.res <- unique(chebi.synonym.res[, colnames(chebi.synonym.res) <-
+#                                          c("chebi.syn",
+#                                            "synstrength",
+#                                            "synlen",
+#                                            "syntype",
+#                                            "id",
+#                                            "synsource",
+#                                            "l")])
 
 chebi.synonym.res$synsource <-
   sub(
@@ -129,13 +187,14 @@ chebi.selected.syns <-
 merged <-
   dplyr::full_join(merged, chebi.selected.syns)
 
-merged <- merged[order(merged$id), ]
+merged <- merged[order(merged$id),]
 
 merged$chebi.demoted <- NA
 merged$chebi.demoted[!is.na(merged$dron.for.chebi)] <-
   merged$main.label[!is.na(merged$dron.for.chebi)]
 merged$main.label[!is.na(merged$dron.for.chebi)] <-
   merged$dron.for.chebi[!is.na(merged$dron.for.chebi)]
+
 
 ####
 
@@ -158,6 +217,12 @@ listed <-
     MARGIN = 1,
     FUN = function(currentrow) {
       print(currentrow[['id']])
+      # print(currentrow)
+      # medlabel <-
+      #   sort(unique(tolower(c(
+      #     currentrow[["main.label"]], currentrow[["dron.for.chebi"]]
+      #   ))))
+      # print(medlabel)
       tokens <-
         c(currentrow[["main.label"]],
           currentrow[["dron.for.chebi"]],
@@ -186,7 +251,18 @@ temp <- listed
 names(temp) <-  NULL
 temp <- toJSON(temp, pretty = TRUE)
 
-write_lines(temp, path = config$json.for.solr)
+write_lines(temp, path = paste0(config$json.source, "/", config$json.for.solr))
+
+####
+
+# med_mapping_kb_labels_exp , /project/turbo_graphdb_staging
+
+# curl 'http://localhost:8983/solr/med_mapping_kb_labels/update?commit=true&overwrite=false' \
+# --data-binary  @medlabels_for_chebi_for_solr.json  -H 'Content-type:application/json'
+
+# now run rxnav_med_mapping_solr_upload_post.R
+
+####
 
 # mm.kb.solr.client <-
 mm.kb.solr.client <- SolrClient$new(
@@ -335,3 +411,4 @@ placeholder <-
       cat("\n\n")
     })
   })
+

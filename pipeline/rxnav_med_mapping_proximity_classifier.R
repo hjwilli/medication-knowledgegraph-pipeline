@@ -19,14 +19,14 @@ image.fn <- "build/rxnav_med_mapping_pds_proximity_classifier.Rdata"
 # source- vs ref- vs ehr (just to get rid of both legacy terms)
 
 ####
-  
+
 # set the working directory to medication-knowledgegraph-pipeline/pipeline
 # for example,
 # setwd("~/GitHub/medication-knowledgegraph-pipeline/pipeline")
 
 # get global settings, functions, etc. from https://raw.githubusercontent.com/PennTURBO/turbo-globals
 
-# some people (https://www.r-bloggers.com/reading-an-r-file-from-github/) 
+# some people (https://www.r-bloggers.com/reading-an-r-file-from-github/)
 # say it’s necessary to load the devtools package before sourcing from GitHub?
 # but the raw page is just a http-accessible page of text, right?
 
@@ -41,7 +41,15 @@ source(
 # Java memory is set in turbo_R_setup.R
 print(getOption("java.parameters"))
 
-####
+# ####
+#
+# version.list <- jsonlite::read_json("build/versionlock.json", simplifyVector = TRUE)
+#
+# ####
+
+version.list <-
+  list(semantic = config$med.mapping.sw.version,
+       datestamp = execution.timestamp)
 
 # is this still true?
 # assumes this script has been launched from the current working directory that contains
@@ -129,7 +137,7 @@ source.medications$ehr.rxn.annotated <-
 
 # # destructive (changing would require rerunning query or load
 source.medications <-
-  source.medications[source.medications$MEDICATION_COUNT >= config$min.empi.count , ]
+  source.medications[source.medications$MEDICATION_COUNT >= config$min.empi.count ,]
 
 ####
 
@@ -149,11 +157,11 @@ normalization.rules.res$wc <- nchar(normalization.rules.res$ws) + 1
 normalization.rules.res$replacement[is.na(normalization.rules.res$replacement)] <-
   ""
 normalization.rules.res <-
-  normalization.rules.res[normalization.rules.res$confidence == "high" , ]
+  normalization.rules.res[normalization.rules.res$confidence == "high" ,]
 normalization.rules.res <-
   normalization.rules.res[order(normalization.rules.res$wc,
                                 normalization.rules.res$char,
-                                decreasing = TRUE), ]
+                                decreasing = TRUE),]
 
 normalization.rules.res$pattern <-
   paste("\\b", normalization.rules.res$pattern, "\\b", sep = "")
@@ -311,10 +319,15 @@ query.list <-
 
 # todo parameterize
 # safe.rxnav.submission.size <- config$safe.rxnav.submission.size
-safe.rxnav.submission.size <- 20000
+# safe.rxnav.submission.size <- 20000
 
 safe.rxnav.submission.count <-
-  ceiling(length(query.list) / safe.rxnav.submission.size)
+  ceiling(length(query.list) / config$safe.rxnav.submission.size)
+
+if (config$safe.rxnav.submission.size >= length(query.list)) {
+  safe.rxnav.submission.count <-
+    ceiling(length(query.list) / ceiling(length(query.list) / 2))
+}
 
 safe.rxnav.submission.chunks <-
   chunk.vec(vec = query.list, chunk.count = safe.rxnav.submission.count)
@@ -325,14 +338,24 @@ outer.chunks <-
     FUN = function(current.chunk) {
       print(Sys.time())
       inner.temp <- bulk.approximateTerm(current.chunk)
-      print("sleeping")
+      tm <- as.POSIXlt(Sys.time(), "UTC", "%Y-%m-%dT%H:%M:%S")
+      tm <- strftime(tm , "%Y-%m-%dT%H:%M:%S%z")
+      print(tm)
+      print(
+        paste0(
+          "    sleeping for ",
+          config$inter.outer.seconds,
+          " seconds between RxNav-in-a-box submissions"
+        )
+      )
       gc()
-      Sys.sleep(30)
+      Sys.sleep(config$inter.outer.seconds)
       return(inner.temp)
     }
   )
 
-approximate.term.res <- do.call(what = rbind.data.frame, args = outer.chunks)
+approximate.term.res <-
+  do.call(what = rbind.data.frame, args = outer.chunks)
 
 # # ~ 45 minutes for XXX
 # # break up into chunks of 10 or 20k?
@@ -372,13 +395,17 @@ ehr.generic_name.approximate <-
     suffixes = c(".q", ".sr")
   )
 
-ehr.generic_name.approximate$query.source <-
-  "lowercased GENERIC_NAME"
-ehr.generic_name.approximate$query.val <-
-  ehr.generic_name.approximate$GENERIC_NAME.lc
+if (nrow(ehr.generic_name.approximate) > 0) {
+  ehr.generic_name.approximate$query.source <-
+    "lowercased GENERIC_NAME"
+  ehr.generic_name.approximate$query.val <-
+    ehr.generic_name.approximate$GENERIC_NAME.lc
+  ehr.approximately <-
+    rbind.data.frame(ehr.full_name.approximate, ehr.generic_name.approximate)
+} else {
+  ehr.approximately <- ehr.full_name.approximate
+}
 
-ehr.approximately <-
-  rbind.data.frame(ehr.full_name.approximate, ehr.generic_name.approximate)
 
 ####
 
@@ -512,11 +539,11 @@ temp$GENERIC_NAME[is.na(temp$GENERIC_NAME)] <- ''
 
 # get before and after counts
 pre <- unique(temp$MEDICATION_ID)
-temp <- temp[complete.cases(temp),]
+temp <- temp[complete.cases(temp), ]
 post <- unique(temp$MEDICATION_ID)
 lost <- setdiff(pre, post)
 lost <-
-  ehr.approximate.original.dists[ehr.approximate.original.dists$MEDICATION_ID %in% lost , ]
+  ehr.approximate.original.dists[ehr.approximate.original.dists$MEDICATION_ID %in% lost ,]
 
 print(Sys.time())
 timed.system <- system.time(rf_responses <-
@@ -566,7 +593,7 @@ uncovered.keys <- setdiff(all.keys, covered.keys)
 
 # save for followup?
 uncovered.frame <-
-  ehr.approximate.original.dists[ehr.approximate.original.dists$MEDICATION_ID %in% uncovered.keys ,]
+  ehr.approximate.original.dists[ehr.approximate.original.dists$MEDICATION_ID %in% uncovered.keys , ]
 
 ###
 
@@ -674,13 +701,13 @@ rxnorm.entities.in.repo <-
 ####
 
 classification.res.tidied.inactive.rxcui <-
-  classification.res.tidied[!(classification.res.tidied$rxcui %in% rxnorm.entities.in.repo),]
+  classification.res.tidied[!(classification.res.tidied$rxcui %in% rxnorm.entities.in.repo), ]
 
 classification.res.tidied <-
-  classification.res.tidied[classification.res.tidied$rxcui %in% rxnorm.entities.in.repo,]
+  classification.res.tidied[classification.res.tidied$rxcui %in% rxnorm.entities.in.repo, ]
 
 classification.res.tidied.id <-
-  classification.res.tidied[classification.res.tidied$override == "identical", ]
+  classification.res.tidied[classification.res.tidied$override == "identical",]
 best.identical <-
   aggregate(
     classification.res.tidied.id$identical,
@@ -697,7 +724,7 @@ classification.res.tidied.onehop <-
   classification.res.tidied[(
     classification.res.tidied$override != "identical" &
       classification.res.tidied$override != "more distant"
-  ) ,]
+  ) , ]
 
 probs.matrix <- classification.res.tidied.onehop[, c(
   "consists_of",
@@ -744,10 +771,10 @@ equal.or.better.Q$identical[is.na(equal.or.better.Q$identical)] <- 0
 equal.or.better.Q$probs.matrix.rowmax[is.na(equal.or.better.Q$probs.matrix.rowmax)] <-
   0
 equal.or.better.Q <-
-  equal.or.better.Q[equal.or.better.Q$probs.matrix.rowmax >= equal.or.better.Q$identical , ]
+  equal.or.better.Q[equal.or.better.Q$probs.matrix.rowmax >= equal.or.better.Q$identical ,]
 
 classification.res.tidied.onehop <-
-  classification.res.tidied.onehop[classification.res.tidied.onehop$MEDICATION_ID %in% equal.or.better.Q$MEDICATION_ID , ]
+  classification.res.tidied.onehop[classification.res.tidied.onehop$MEDICATION_ID %in% equal.or.better.Q$MEDICATION_ID ,]
 
 ####
 
@@ -762,7 +789,7 @@ classification.res.tidied.md <-
                                 !(
                                   classification.res.tidied$MEDICATION_ID %in% classification.res.tidied.onehop$MEDICATION_ID
                                 )
-                              ) , ]
+                              ) ,]
 
 probs.matrix <- classification.res.tidied.md[, c(
   "consists_of",
@@ -955,7 +982,7 @@ body <- rbind.data.frame(robot.line, body)
 names(body) <- pre.robot
 
 # the filename below is monstly hardcoded so that the robot shell script
-# doesn't ahve to parse the yaml file
+# doesn't have to parse the yaml file
 # I guess we could actually write the shell script IN this R script ?!
 write.table(
   x = body,
@@ -967,11 +994,25 @@ write.table(
   col.names = TRUE
 )
 
+# put these in turbo_R_setup.yaml
+build.source.med.classifications.annotations(
+  version.list = version.list,
+  onto.iri = "http://example.com/resource/classified_search_results",
+  onto.file = "build/classified_search_results_ontology_annotations.ttl",
+  onto.file.format = "turtle"
+)
+
+
+# put these in turbo_R_setup.yaml
+build.source.med.classifications.annotations(
+  version.list = version.list,
+  onto.iri = "http://example.com/resource/reference_medications",
+  onto.file = "build/reference_medications_ontology_annotations.ttl",
+  onto.file.format = "turtle"
+)
+
 # now run med_mapping_robot.sh
+# CHECK SCRIPT NAME!
 # which reads from and writes to completely hardcoded files/paths
-
-# TODO add ontology annotations to the two robot-created turtle files
-
-# and then run XXX
 
 save.image(image.fn)

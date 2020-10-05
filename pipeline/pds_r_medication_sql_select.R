@@ -19,11 +19,13 @@ source(
 # Java memory is set in turbo_R_setup.R
 print(getOption("java.parameters"))
 
-####
+# ####
+# 
+# version.list <- jsonlite::read_json("build/versionlock.json", simplifyVector = TRUE)
+# 
+# ####
 
-version.list <- jsonlite::read_json("build/versionlock.json", simplifyVector = TRUE)
-
-####
+version.list <- list(semantic = config$med.mapping.sw.version, datestamp = execution.timestamp)
 
 # VPN and tunnel may be required
 # set that up outside of this script
@@ -100,4 +102,4 @@ colnames(source.medications) <-
 
 # save.image("pds_r_medication_sql_select.Rdata")
 
-save(source.medications, file = config$source.medications.Rdata.loadpath)
+save(source.medications, version.list, file = config$source.medications.Rdata.loadpath)
