@@ -3,6 +3,8 @@
  M git_status_last_commit.txt
  M pre_commit_date.txt
 ?? pipeline/classify_to_end.sh
+?? pre_commit_status.txt
+?? pre_commit_tags.txt
 !! .DS_Store
 !! local/
 !! pipeline/.Rhistory
