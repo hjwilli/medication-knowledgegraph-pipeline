@@ -1,6 +1,6 @@
-## versioning...origin/versioning [ahead 1]
+## versioning...origin/versioning [ahead 2]
  M described_tags.txt
-?? git_status_last_commit.txt
+ M git_status_last_commit.txt
 ?? pipeline/classify_to_end.sh
 !! local/
 !! pipeline/.Rhistory
