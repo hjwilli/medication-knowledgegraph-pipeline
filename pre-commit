@@ -1,0 +1,5 @@
+#!/bin/sh
+#
+git describe --tags > pre_commit_tags.txt
+git status -s -b --ignored > pre_commit_status.txt
+date "+%Y-%m-%dT%H:%M:%S" > pre_commit_date.txt

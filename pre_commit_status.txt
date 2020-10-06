@@ -1,10 +1,8 @@
-## versioning...origin/versioning [ahead 1]
-M  described_tags.txt
-M  git_status_last_commit.txt
+## versioning...origin/versioning
 M  pre_commit_date.txt
+RM git_status_last_commit.txt -> pre_commit_status.txt
+RM described_tags.txt -> pre_commit_tags.txt
 ?? pipeline/classify_to_end.sh
-?? pre_commit_status.txt
-?? pre_commit_tags.txt
 !! .DS_Store
 !! local/
 !! pipeline/.Rhistory
