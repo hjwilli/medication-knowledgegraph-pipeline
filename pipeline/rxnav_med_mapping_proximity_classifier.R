@@ -136,6 +136,9 @@ source.medications$ehr.rxn.annotated <-
 # but only ~250k that have an order/encounter link to a patient with an EMPI
 
 # # destructive (changing would require rerunning query or load
+
+# config$min.empi.count <- 0
+
 source.medications <-
   source.medications[source.medications$MEDICATION_COUNT >= config$min.empi.count ,]
 
@@ -170,6 +173,11 @@ normalization.rules.res$replacement[is.na(normalization.rules.res$replacement)] 
 
 normalization.rules <- normalization.rules.res$replacement
 names(normalization.rules) <- normalization.rules.res$pattern
+
+# Error in tolower(source.medications$FULL_NAME) : invalid input 'PEEL AND BLEACH CR�ME LITE' in 'utf8towcs'
+
+source.medications$FULL_NAME <- iconv(source.medications$FULL_NAME, "ASCII", "UTF-8", sub="")
+source.medications$GENERIC_NAME <- iconv(source.medications$GENERIC_NAME, "ASCII", "UTF-8", sub="")
 
 source.medications$normalized <-
   tolower(source.medications$FULL_NAME)
@@ -700,6 +708,14 @@ rxnorm.entities.in.repo <-
 
 ####
 
+# classification.res.tidied$rxcui.in.rdf <-
+#   classification.res.tidied$rxcui %in% rxnorm.entities.in.repo
+
+# classification.res.tidied <-
+#   classification.res.tidied[, 1:49]
+
+####
+
 classification.res.tidied.inactive.rxcui <-
   classification.res.tidied[!(classification.res.tidied$rxcui %in% rxnorm.entities.in.repo), ]
 
@@ -1016,3 +1032,4 @@ build.source.med.classifications.annotations(
 # which reads from and writes to completely hardcoded files/paths
 
 save.image(image.fn)
+

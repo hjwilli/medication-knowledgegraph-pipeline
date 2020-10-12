@@ -310,9 +310,14 @@ print(out)
 
 ssh_disconnect(session)
 
+x <- list("doc_type" = "version", "sw_version" = pre_commit_tags, "build.date" = execution.timestamp)
+
+add(x, mm.kb.solr.client, config$med.map.kb.solr.core, commit = TRUE, commit_within = NULL,
+    overwrite = TRUE, boost = NULL, wt = "json", raw = FALSE)
+
 ####
 
-# run the sample Solr queries from teh TMM ontology
+# run the sample Solr queries from the TMM ontology
 
 tmm.ont.url <-
   "https://raw.githubusercontent.com/PennTURBO/medication-knowledgegraph-pipeline/master/ontology/tmm_ontology.ttl"

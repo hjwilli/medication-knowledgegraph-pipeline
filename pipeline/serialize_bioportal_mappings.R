@@ -97,7 +97,7 @@ bp.mappings.pair.to.minimal.df <- function(from.ont, to.ont) {
       
       inner.res <- do.call(rbind.data.frame, inner.res)
       inner.res <-
-        inner.res[as.character(inner.res$source.term) != as.character(inner.res$mapped.term), ]
+        inner.res[as.character(inner.res$source.term) != as.character(inner.res$mapped.term),]
       inner.res <-
         unique(inner.res[, c("source.term", "source.ontology", "mapped.term")])
       
@@ -261,4 +261,3 @@ lapply(config$my.source.ontolgies, function(current.source) {
 
 rdf_serialize(rdf = direct.rdf,
               doc = config$bioportal.triples.destination)
-
