@@ -19,6 +19,23 @@ source(
 # Java memory is set in turbo_R_setup.R
 print(getOption("java.parameters"))
 
+# may also want to capture
+#   pre_commit_status.txt
+pre_commit_tags.fp <- "../pre_commit_tags.txt"
+# execution.timestamp determined fresh each time
+#   https://raw.githubusercontent.com/PennTURBO/turbo-globals/master/turbo_R_setup.R
+#   is sourced
+if (file.exists(pre_commit_tags.fp)) {
+  temp <- read_lines(pre_commit_tags.fp)
+  version.list <-
+    list(versioninfo = temp,
+         created = execution.timestamp)
+} else {
+  version.list <-
+    list(versioninfo = config$med.mapping.sw.version,
+         created = execution.timestamp)
+}
+
 ####
 
 library(gtools)
@@ -215,8 +232,8 @@ print(Sys.time())
 # really want to know the release dates/verions of tee included component
 # in the mean time, could add the IP address of the BioPortal server that was queried?
 
-tm <- as.POSIXlt(Sys.time(), "UTC", "%Y-%m-%dT%H:%M:%S")
-tm <- strftime(tm , "%Y-%m-%dT%H:%M:%S%z")
+# tm <- as.POSIXlt(Sys.time(), "UTC", "%Y-%m-%dT%H:%M:%S")
+# tm <- strftime(tm , "%Y-%m-%dT%H:%M:%S%z")
 
 rdf_add(
   rdf = direct.rdf,
@@ -225,7 +242,18 @@ rdf_add(
     config$bioportal.mapping.graph.name
   ),
   predicate = "http://www.w3.org/2002/07/versionInfo",
-  object = tm
+  object = version.list[['versioninfo']]
+)
+
+
+rdf_add(
+  rdf = direct.rdf,
+  subject = paste0(
+    'http://example.com/resource/',
+    config$bioportal.mapping.graph.name
+  ),
+  predicate = "http://purl.org/dc/terms/created",
+  object = execution.timestamp
 )
 
 lapply(config$my.source.ontolgies, function(current.source) {

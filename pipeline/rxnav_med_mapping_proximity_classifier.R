@@ -1,9 +1,6 @@
-config.fn <- "config/turbo_R_setup.yaml"
-image.fn <- "build/rxnav_med_mapping_pds_proximity_classifier.Rdata"
-
 # need better terms for identical and more distant
-# no spaces
-# defined in ontology
+# no spaces in other terms like "has_ingredient"
+# defined them in TMM ontology?
 # would have to go back to training
 # use http://purl.bioontology.org/ontology/RXNORM/ base for now
 
@@ -41,19 +38,22 @@ source(
 # Java memory is set in turbo_R_setup.R
 print(getOption("java.parameters"))
 
-# ####
-#
-# version.list <- jsonlite::read_json("build/versionlock.json", simplifyVector = TRUE)
-#
-# ####
-
-version.list <-
-  list(semantic = config$med.mapping.sw.version,
-       datestamp = execution.timestamp)
-
-# is this still true?
-# assumes this script has been launched from the current working directory that contains
-#  rxnav_med_mapping_setup.R, rxnav_med_mapping.yaml
+# may also want to capture
+#   pre_commit_status.txt
+pre_commit_tags.fp <- "../pre_commit_tags.txt"
+# execution.timestamp determined fresh each time
+#   https://raw.githubusercontent.com/PennTURBO/turbo-globals/master/turbo_R_setup.R
+#   is sourced
+if (file.exists(pre_commit_tags.fp)) {
+  temp <- read_lines(pre_commit_tags.fp)
+  version.list <-
+    list(versioninfo = temp,
+         created = execution.timestamp)
+} else {
+  version.list <-
+    list(versioninfo = config$med.mapping.sw.version,
+         created = execution.timestamp)
+}
 
 ####
 
@@ -137,10 +137,10 @@ source.medications$ehr.rxn.annotated <-
 
 # # destructive (changing would require rerunning query or load
 
-# config$min.empi.count <- 0
-
-source.medications <-
-  source.medications[source.medications$MEDICATION_COUNT >= config$min.empi.count ,]
+# # config$min.empi.count <- 0
+#
+# source.medications <-
+#   source.medications[source.medications$MEDICATION_COUNT >= config$min.empi.count ,]
 
 ####
 
@@ -160,11 +160,11 @@ normalization.rules.res$wc <- nchar(normalization.rules.res$ws) + 1
 normalization.rules.res$replacement[is.na(normalization.rules.res$replacement)] <-
   ""
 normalization.rules.res <-
-  normalization.rules.res[normalization.rules.res$confidence == "high" ,]
+  normalization.rules.res[normalization.rules.res$confidence == "high" , ]
 normalization.rules.res <-
   normalization.rules.res[order(normalization.rules.res$wc,
                                 normalization.rules.res$char,
-                                decreasing = TRUE),]
+                                decreasing = TRUE), ]
 
 normalization.rules.res$pattern <-
   paste("\\b", normalization.rules.res$pattern, "\\b", sep = "")
@@ -176,8 +176,10 @@ names(normalization.rules) <- normalization.rules.res$pattern
 
 # Error in tolower(source.medications$FULL_NAME) : invalid input 'PEEL AND BLEACH CR�ME LITE' in 'utf8towcs'
 
-source.medications$FULL_NAME <- iconv(source.medications$FULL_NAME, "ASCII", "UTF-8", sub="")
-source.medications$GENERIC_NAME <- iconv(source.medications$GENERIC_NAME, "ASCII", "UTF-8", sub="")
+source.medications$FULL_NAME <-
+  iconv(source.medications$FULL_NAME, "ASCII", "UTF-8", sub = "")
+source.medications$GENERIC_NAME <-
+  iconv(source.medications$GENERIC_NAME, "ASCII", "UTF-8", sub = "")
 
 source.medications$normalized <-
   tolower(source.medications$FULL_NAME)
@@ -191,6 +193,22 @@ source.medications$GENERIC_NAME.lc[is.na(source.medications$GENERIC_NAME.lc)] <-
 
 # applying longest normalizastions first
 # use some kind of automated synonym discovery, like phrase2vec?
+
+# run-on correction
+source.medications$normalized <-
+  gsub(
+    "(\\d)([^ \\.0123456789])",
+    replacement = "\\1 \\2",
+    x = source.medications$normalized,
+    fixed = FALSE
+  )
+
+#### new experimental removal of anything that starts with a digit
+source.medications$normalized <-
+  gsub(pattern = "\\d+\\b",
+       replacement = "",
+       x = source.medications$normalized)
+
 source.medications$normalized <-
   stringr::str_replace_all(source.medications$normalized, normalization.rules)
 
@@ -277,23 +295,12 @@ source.medications$GENERIC_NAME.lc <-
     fixed = TRUE
   )
 
-
-# run-on correction
-source.medications$normalized <-
-  gsub(
-    "(\\d)([^ \\.0123456789])",
-    replacement = "\\1 \\2",
-    x = source.medications$normalized,
-    fixed = FALSE
-  )
-
 # eliminate trailing space
 # also remove trailing punct ??
 source.medications$normalized <-
   gsub(pattern = "\\W+$",
        replacement = "",
        x = source.medications$normalized)
-
 
 # extra spaces
 source.medications$normalized <- gsub(pattern = " +",
@@ -378,8 +385,14 @@ rxaui.asserted.string.res <-
   bulk.rxaui.asserted.strings(approximate.term.res$rxaui,
                               chunk.count = config$rxaui.asserted.strings.chunk.count)
 
+# approximate.with.original <-
+#   left_join(rxaui.asserted.string.res, approximate.term.res)
+
 approximate.with.original <-
-  left_join(rxaui.asserted.string.res, approximate.term.res)
+  right_join(rxaui.asserted.string.res, approximate.term.res, by = "rxaui")
+
+
+####
 
 ehr.full_name.approximate <-
   left_join(
@@ -519,7 +532,15 @@ print(sort(table(accounted.cols)))
 
 ####
 
+current.version.list <- version.list
+
+# modifies version list!
+
 load(config$rf.model.loadpath)
+
+rf.model.version.list <- version.list
+
+version.list <- current.version.list
 
 ####
 
@@ -584,7 +605,7 @@ dim(performance.frame)
 table(performance.frame$override)
 all.keys <-
   source.medications$MEDICATION_ID[source.medications$MEDICATION_COUNT >= config$min.empi.count]
-# all.keys <- unique(source.medications$MEDICATION_ID)
+
 print(length(all.keys))
 
 covered.keys <-
@@ -616,7 +637,7 @@ classification.res.tidied <-
     "normalized",
     "query.source",
     "query.val",
-    "rxcui",
+    "rxcui.x",
     "rxaui",
     "score",
     "rank",
@@ -657,7 +678,66 @@ classification.res.tidied <-
     "override"
   )]
 
+# why are there  .x and .y rxcuis now?
+colnames(classification.res.tidied) <- c(
+  "MEDICATION_ID",
+  "FULL_NAME",
+  "GENERIC_NAME",
+  "RXNORM",
+  "MEDICATION_COUNT",
+  "ehr.rxn.annotated",
+  "normalized",
+  "query.source",
+  "query.val",
+  "rxcui",
+  "rxaui",
+  "score",
+  "rank",
+  "STR",
+  "SAB.sr",
+  "TTY.sr",
+  "rxaui.freq",
+  "rxcui.freq",
+  "q.char",
+  "q.words",
+  "sr.char",
+  "sr.words",
+  "cosine",
+  "jaccard",
+  "jw",
+  "lcs",
+  "lv",
+  "qgram",
+  "rf_responses",
+  "consists_of",
+  "constitutes",
+  "contained_in",
+  "contains",
+  "form_of",
+  "has_form",
+  "has_ingredient",
+  "has_part",
+  "has_quantified_form",
+  "has_tradename",
+  "identical",
+  "ingredient_of",
+  "inverse_isa",
+  "isa",
+  "more distant",
+  "part_of",
+  "quantified_form_of",
+  "tradename_of",
+  "override"
+)
+
 classification.res.tidied <- unique(classification.res.tidied)
+
+# # for Shun's diagnostics
+# #   how many clarity medications are lost because there were not RxNorm hits at all?
+# #   (any other explanatiosn up to this point?)
+# #   further on, some will be lost due to the requirement for RxCUIs to be present in the RDF
+# setdiff(fifty_ish_clarity_medids,
+#         classification.res.tidied$MEDICATION_ID)
 
 # step above (or below?) is slow with min count < 10
 
@@ -708,22 +788,22 @@ rxnorm.entities.in.repo <-
 
 ####
 
-# classification.res.tidied$rxcui.in.rdf <-
-#   classification.res.tidied$rxcui %in% rxnorm.entities.in.repo
-
-# classification.res.tidied <-
-#   classification.res.tidied[, 1:49]
+for.shun <- classification.res.tidied
+for.shun$rxcui.in.rdf <-
+  for.shun$rxcui %in% rxnorm.entities.in.repo
 
 ####
 
 classification.res.tidied.inactive.rxcui <-
-  classification.res.tidied[!(classification.res.tidied$rxcui %in% rxnorm.entities.in.repo), ]
+  classification.res.tidied[!(classification.res.tidied$rxcui %in% rxnorm.entities.in.repo),]
 
 classification.res.tidied <-
-  classification.res.tidied[classification.res.tidied$rxcui %in% rxnorm.entities.in.repo, ]
+  classification.res.tidied[classification.res.tidied$rxcui %in% rxnorm.entities.in.repo,]
 
 classification.res.tidied.id <-
-  classification.res.tidied[classification.res.tidied$override == "identical",]
+  classification.res.tidied[classification.res.tidied$override == "identical", ]
+
+
 best.identical <-
   aggregate(
     classification.res.tidied.id$identical,
@@ -740,7 +820,7 @@ classification.res.tidied.onehop <-
   classification.res.tidied[(
     classification.res.tidied$override != "identical" &
       classification.res.tidied$override != "more distant"
-  ) , ]
+  ) ,]
 
 probs.matrix <- classification.res.tidied.onehop[, c(
   "consists_of",
@@ -787,10 +867,10 @@ equal.or.better.Q$identical[is.na(equal.or.better.Q$identical)] <- 0
 equal.or.better.Q$probs.matrix.rowmax[is.na(equal.or.better.Q$probs.matrix.rowmax)] <-
   0
 equal.or.better.Q <-
-  equal.or.better.Q[equal.or.better.Q$probs.matrix.rowmax >= equal.or.better.Q$identical ,]
+  equal.or.better.Q[equal.or.better.Q$probs.matrix.rowmax >= equal.or.better.Q$identical , ]
 
 classification.res.tidied.onehop <-
-  classification.res.tidied.onehop[classification.res.tidied.onehop$MEDICATION_ID %in% equal.or.better.Q$MEDICATION_ID ,]
+  classification.res.tidied.onehop[classification.res.tidied.onehop$MEDICATION_ID %in% equal.or.better.Q$MEDICATION_ID , ]
 
 ####
 
@@ -805,7 +885,7 @@ classification.res.tidied.md <-
                                 !(
                                   classification.res.tidied$MEDICATION_ID %in% classification.res.tidied.onehop$MEDICATION_ID
                                 )
-                              ) ,]
+                              ) , ]
 
 probs.matrix <- classification.res.tidied.md[, c(
   "consists_of",
@@ -855,6 +935,15 @@ classification.res.tidied <-
     classification.res.tidied.md[, shared.cols]
   )
 
+# # do a setdiff and compare to source medications
+# post.rdf.check.post.id_oh_md <-
+#   setdiff(fifty_ish_clarity_medids,
+#           classification.res.tidied$MEDICATION_ID)
+#
+# temp <-
+#   source.medications[source.medications$MEDICATION_ID %in% post.rdf.check.post.id_oh_md ,]
+
+# these don't look too problematic
 ####
 
 uuids <- uuid::UUIDgenerate(n = nrow(classification.res.tidied))
@@ -929,10 +1018,10 @@ classification.res.tidied$source_rxcui[classification.res.tidied$source_rxcui ==
 # 90 minutes for rdflib::add... instantiating all search results, not filtered by best identical score etc.
 
 
-# refactor
+#### REFACTOR!
 current.task <- 'classified_search_results'
 more.specific <-
-  config::get(file = config.fn, config = current.task)
+  config::get(file = config$config.fn, config = current.task)
 
 keepers <-
   med_map_csv_cols$more_generic %in% setdiff(graphs.cols[[current.task]], "source_has_rxcui")
@@ -967,11 +1056,18 @@ write.table(
   col.names = TRUE
 )
 
+build.source.med.classifications.annotations(
+  version.list = version.list,
+  onto.iri = more.specific$onto.iri ,
+  onto.file = more.specific$onto.file ,
+  onto.file.format = more.specific$onto.file.format
+)
+
 ####
 
 current.task <- 'reference_medications'
 more.specific <-
-  config::get(file = config.fn, config = current.task)
+  config::get(file = config$config.fn, config = current.task)
 
 keepers <-
   med_map_csv_cols$more_generic %in% setdiff(graphs.cols[[current.task]], "source_has_rxcui")
@@ -997,7 +1093,7 @@ body[] <- lapply(body[], as.character)
 body <- rbind.data.frame(robot.line, body)
 names(body) <- pre.robot
 
-# the filename below is monstly hardcoded so that the robot shell script
+# the filename below is mostly hardcoded so that the robot shell script
 # doesn't have to parse the yaml file
 # I guess we could actually write the shell script IN this R script ?!
 write.table(
@@ -1010,26 +1106,14 @@ write.table(
   col.names = TRUE
 )
 
-# put these in turbo_R_setup.yaml
 build.source.med.classifications.annotations(
   version.list = version.list,
-  onto.iri = "http://example.com/resource/classified_search_results",
-  onto.file = "build/classified_search_results_ontology_annotations.ttl",
-  onto.file.format = "turtle"
+  onto.iri = more.specific$onto.iri ,
+  onto.file = more.specific$onto.file ,
+  onto.file.format = more.specific$onto.file.format
 )
 
-
-# put these in turbo_R_setup.yaml
-build.source.med.classifications.annotations(
-  version.list = version.list,
-  onto.iri = "http://example.com/resource/reference_medications",
-  onto.file = "build/reference_medications_ontology_annotations.ttl",
-  onto.file.format = "turtle"
-)
-
-# now run med_mapping_robot.sh
-# CHECK SCRIPT NAME!
+# now run tmm_robot.sh
 # which reads from and writes to completely hardcoded files/paths
 
-save.image(image.fn)
-
+save.image(config$image.fn)

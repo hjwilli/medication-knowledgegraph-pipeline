@@ -70,7 +70,7 @@ colnames(crsc.solr.res) <-
   c("main.label", "definedin", "id", "employment")
 
 crsc.solr.res <-
-  crsc.solr.res[crsc.solr.res$id %in% crsc.addtions,]
+  crsc.solr.res[crsc.solr.res$id %in% crsc.addtions, ]
 
 main.solr.res <-
   rbind.data.frame(main.solr.res, crsc.solr.res[, colnames(main.solr.res)])
@@ -187,7 +187,7 @@ chebi.selected.syns <-
 merged <-
   dplyr::full_join(merged, chebi.selected.syns)
 
-merged <- merged[order(merged$id),]
+merged <- merged[order(merged$id), ]
 
 merged$chebi.demoted <- NA
 merged$chebi.demoted[!is.na(merged$dron.for.chebi)] <-
@@ -310,10 +310,20 @@ print(out)
 
 ssh_disconnect(session)
 
-x <- list("doc_type" = "version", "sw_version" = pre_commit_tags, "build.date" = execution.timestamp)
+x <-
+  list("versionInfo" = pre_commit_tags, "created" = execution.timestamp)
 
-add(x, mm.kb.solr.client, config$med.map.kb.solr.core, commit = TRUE, commit_within = NULL,
-    overwrite = TRUE, boost = NULL, wt = "json", raw = FALSE)
+add(
+  x,
+  mm.kb.solr.client,
+  config$med.map.kb.solr.core,
+  commit = TRUE,
+  commit_within = NULL,
+  overwrite = TRUE,
+  boost = NULL,
+  wt = "json",
+  raw = FALSE
+)
 
 ####
 
@@ -416,4 +426,3 @@ placeholder <-
       cat("\n\n")
     })
   })
-

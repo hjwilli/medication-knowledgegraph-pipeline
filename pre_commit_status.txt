@@ -1,8 +1,4 @@
 ## versioning...origin/versioning
-M  pipeline/build_insert_med_mapping_solr_json.R
-M  pipeline/rxnav_med_mapping_load_materialize_etc.R
-M  pipeline/rxnav_med_mapping_proximity_classifier.R
-M  pipeline/serialize_bioportal_mappings.R
 M  pre_commit_date.txt
 MM pre_commit_status.txt
 MM pre_commit_tags.txt
