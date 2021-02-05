@@ -29,8 +29,8 @@ jobs:
           cat release_*.txt
           git add release_*.txt
       
+      - uses: nelonoel/branch-name@v1.0.1
       - name: Branch Name
-        uses: nelonoel/branch-name@v1.0.1
         # Use branch name for whatever purpose
         run: echo ${BRANCH_NAME}
 
@@ -39,11 +39,12 @@ jobs:
           git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git commit -m "dumped last version metadata to last_*.txt files" -a
+      
       - name: Push changes
         uses: ad-m/github-push-action@master
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          # branch: ${{ github.ref }}
-          branch: master
-          force: true
-          tags: true
+          branch: ${{ github.ref }}
+          #branch: master
+          #force: true
+          #tags: true
