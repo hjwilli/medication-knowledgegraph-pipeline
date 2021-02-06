@@ -13,3 +13,5 @@ jobs:
           files: 'app.yaml'
           version-regexp: '\d+.\d+.\d+'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
+          arthour-email: "41898282+github-actions[bot]@users.noreply.github.com"
+          author-name: "github-actions[bot]"
